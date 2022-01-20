@@ -291,6 +291,14 @@ enum {
 };
 
 /*
+ * If supported, clockid value to select an architecture dependant hardware
+ * clock. Note this means the unit of time is ticks not nanoseconds.
+ * On x86, this is provided by the rdtsc instruction, and is not
+ * paravirtualized.
+ */
+#define CLOCK_PERF_HW_CLOCK		0x10000000
+
+/*
  * The format of the data returned by read() on a perf event fd,
  * as specified by attr.read_format:
  *

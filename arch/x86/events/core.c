@@ -2980,6 +2980,11 @@ unsigned long perf_misc_flags(struct pt_regs *regs)
 	return misc;
 }
 
+u64 perf_hw_clock(void)
+{
+	return rdtsc_ordered();
+}
+
 void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
 {
 	cap->version		= x86_pmu.version;
