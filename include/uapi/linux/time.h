@@ -68,6 +68,17 @@ struct timezone {
 #define CLOCKS_MONO			CLOCK_MONOTONIC
 
 /*
+ * If supported, clockid value for use in struct perf_event_attr to select an
+ * architecture dependent hardware clock. Note this means the unit of time is
+ * ticks not nanoseconds. WARNING: This clock may not be stable or well-behaved
+ * in any way, including varying across different CPUs.
+ *
+ * On x86, this is provided by the rdtsc instruction, and is not
+ * paravirtualized. Note the warning above can also apply to TSC.
+ */
+#define CLOCK_PERF_HW_CLOCK		0x10000000
+
+/*
  * The various flags for setting POSIX.1b interval timers:
  */
 #define TIMER_ABSTIME			0x01

@@ -2728,6 +2728,15 @@ void arch_perf_update_userpage(struct perf_event *event,
 		!!(event->hw.flags & PERF_EVENT_FLAG_USER_READ_CNT);
 	userpg->pmc_width = x86_pmu.cntval_bits;
 
+	if (event->attr.use_clockid && event->attr.clockid == CLOCK_PERF_HW_CLOCK) {
+		userpg->cap_user_time_zero = 1;
+		userpg->time_mult = 1;
+		userpg->time_shift = 0;
+		userpg->time_offset = 0;
+		userpg->time_zero = 0;
+		return;
+	}
+
 	if (!using_native_sched_clock() || !sched_clock_stable())
 		return;
 
@@ -2978,6 +2987,11 @@ unsigned long perf_misc_flags(struct pt_regs *regs)
 		misc |= PERF_RECORD_MISC_EXACT_IP;
 
 	return misc;
+}
+
+u64 perf_hw_clock(void)
+{
+	return rdtsc_ordered();
 }
 
 void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
