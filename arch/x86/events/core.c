@@ -41,6 +41,7 @@
 #include <asm/desc.h>
 #include <asm/ldt.h>
 #include <asm/unwind.h>
+#include <asm/tsc.h>
 
 #include "perf_event.h"
 
@@ -2728,16 +2729,26 @@ void arch_perf_update_userpage(struct perf_event *event,
 		!!(event->hw.flags & PERF_EVENT_FLAG_USER_READ_CNT);
 	userpg->pmc_width = x86_pmu.cntval_bits;
 
-	if (event->attr.use_clockid && event->attr.clockid == CLOCK_PERF_HW_CLOCK) {
-		userpg->cap_user_time_zero = 1;
-		userpg->time_mult = 1;
-		userpg->time_shift = 0;
-		userpg->time_offset = 0;
-		userpg->time_zero = 0;
-		return;
+	if (event->attr.use_clockid) {
+		if (event->attr.clockid == CLOCK_PERF_HW_CLOCK) {
+			userpg->cap_user_time_zero = 1;
+			userpg->time_mult = 1;
+			userpg->time_shift = 0;
+			userpg->time_offset = 0;
+			userpg->time_zero = 0;
+			return;
+		}
+		if (event->attr.clockid == CLOCK_PERF_HW_CLOCK_NS)
+			userpg->cap_user_time_zero = 1;
 	}
 
-	if (!using_native_sched_clock() || !sched_clock_stable())
+	if (using_native_sched_clock() && sched_clock_stable()) {
+		userpg->cap_user_time = 1;
+		if (!event->attr.use_clockid)
+			userpg->cap_user_time_zero = 1;
+	}
+
+	if (!userpg->cap_user_time && !userpg->cap_user_time_zero)
 		return;
 
 	cyc2ns_read_begin(&data);
@@ -2748,19 +2759,16 @@ void arch_perf_update_userpage(struct perf_event *event,
 	 * Internal timekeeping for enabled/running/stopped times
 	 * is always in the local_clock domain.
 	 */
-	userpg->cap_user_time = 1;
 	userpg->time_mult = data.cyc2ns_mul;
 	userpg->time_shift = data.cyc2ns_shift;
 	userpg->time_offset = offset - now;
 
 	/*
 	 * cap_user_time_zero doesn't make sense when we're using a different
-	 * time base for the records.
+	 * time base for the records, except for CLOCK_PERF_HW_CLOCK_NS.
 	 */
-	if (!event->attr.use_clockid) {
-		userpg->cap_user_time_zero = 1;
+	if (userpg->cap_user_time_zero)
 		userpg->time_zero = offset;
-	}
 
 	cyc2ns_read_end();
 }
@@ -2992,6 +3000,11 @@ unsigned long perf_misc_flags(struct pt_regs *regs)
 u64 perf_hw_clock(void)
 {
 	return rdtsc_ordered();
+}
+
+u64 perf_hw_clock_ns(void)
+{
+	return native_sched_clock_from_tsc(perf_hw_clock());
 }
 
 void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)

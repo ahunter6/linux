@@ -77,6 +77,12 @@ struct timezone {
  * paravirtualized. Note the warning above can also apply to TSC.
  */
 #define CLOCK_PERF_HW_CLOCK		0x10000000
+/*
+ * Same as CLOCK_PERF_HW_CLOCK but in nanoseconds. Note support of
+ * CLOCK_PERF_HW_CLOCK_NS does not necesssarily imply support of
+ * CLOCK_PERF_HW_CLOCK or vice versa.
+ */
+#define CLOCK_PERF_HW_CLOCK_NS		0x10000001
 
 /*
  * The various flags for setting POSIX.1b interval timers:
