@@ -11964,6 +11964,12 @@ static int perf_event_set_clock(struct perf_event *event, clockid_t clk_id)
 		nmi_safe = true;
 		break;
 #endif
+#ifdef perf_hw_clock_ns
+	case CLOCK_PERF_HW_CLOCK_NS:
+		event->clock = &perf_hw_clock_ns;
+		nmi_safe = true;
+		break;
+#endif
 
 	default:
 		return -EINVAL;

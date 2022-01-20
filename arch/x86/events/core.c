@@ -41,6 +41,7 @@
 #include <asm/desc.h>
 #include <asm/ldt.h>
 #include <asm/unwind.h>
+#include <asm/tsc.h>
 
 #include "perf_event.h"
 
@@ -2719,6 +2720,8 @@ static struct pmu pmu = {
 void arch_perf_update_userpage(struct perf_event *event,
 			       struct perf_event_mmap_page *userpg, u64 now)
 {
+	bool hw_clk_ns = event->attr.use_clockid &&
+			 event->attr.clockid == CLOCK_PERF_HW_CLOCK_NS;
 	struct cyc2ns_data data;
 	u64 offset;
 
@@ -2728,13 +2731,14 @@ void arch_perf_update_userpage(struct perf_event *event,
 		!!(event->hw.flags & PERF_EVENT_FLAG_USER_READ_CNT);
 	userpg->pmc_width = x86_pmu.cntval_bits;
 
-	if (!using_native_sched_clock() || !sched_clock_stable())
+	if (!hw_clk_ns &&
+	    (!using_native_sched_clock() || !sched_clock_stable()))
 		return;
 
 	cyc2ns_read_begin(&data);
 
-	offset = data.cyc2ns_offset + __sched_clock_offset;
-
+	offset = data.cyc2ns_offset +
+		 (sched_clock_stable() ? __sched_clock_offset : 0);
 	/*
 	 * Internal timekeeping for enabled/running/stopped times
 	 * is always in the local_clock domain.
@@ -2746,9 +2750,9 @@ void arch_perf_update_userpage(struct perf_event *event,
 
 	/*
 	 * cap_user_time_zero doesn't make sense when we're using a different
-	 * time base for the records.
+	 * time base for the records, except for CLOCK_PERF_HW_CLOCK_NS.
 	 */
-	if (!event->attr.use_clockid) {
+	if (hw_clk_ns || !event->attr.use_clockid) {
 		userpg->cap_user_time_zero = 1;
 		userpg->time_zero = offset;
 	}
@@ -2983,6 +2987,11 @@ unsigned long perf_misc_flags(struct pt_regs *regs)
 u64 perf_hw_clock(void)
 {
 	return rdtsc_ordered();
+}
+
+u64 perf_hw_clock_ns(void)
+{
+	return native_sched_clock_from_tsc(perf_hw_clock());
 }
 
 void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
