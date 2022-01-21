@@ -242,7 +242,7 @@ u64 native_sched_clock(void)
  */
 u64 native_sched_clock_from_tsc(u64 tsc)
 {
-	return cycles_2_ns(tsc);
+	return cycles_2_ns(tsc) + __sched_clock_offset;
 }
 
 /* We need to define a real function for sched_clock, to override the
