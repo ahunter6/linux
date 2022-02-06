@@ -444,7 +444,16 @@ Record running and enabled time for read events (:S)
 Sets the clock id to use for the various time fields in the perf_event_type
 records. See clock_gettime(). In particular CLOCK_MONOTONIC and
 CLOCK_MONOTONIC_RAW are supported, some events might also allow
-CLOCK_BOOTTIME, CLOCK_REALTIME and CLOCK_TAI.
+CLOCK_BOOTTIME, CLOCK_REALTIME and CLOCK_TAI. In addition, the kernel might
+support CLOCK_PERF_HW_CLOCK to select an architecture dependent hardware
+clock, for which the unit of time is ticks not nanoseconds. On x86,
+CLOCK_PERF_HW_CLOCK is provided by the rdtsc instruction, and is not
+paravirtualized. There is also CLOCK_PERF_HW_CLOCK_NS which is the same as
+CLOCK_PERF_HW_CLOCK, but converted to nanoseconds. Note support of
+CLOCK_PERF_HW_CLOCK_NS does not necessarily imply support of
+CLOCK_PERF_HW_CLOCK or vice versa. Be warned, CLOCK_PERF_HW_CLOCK and
+CLOCK_PERF_HW_CLOCK_NS may not be stable or well-behaved in any way,
+including varying across different CPUs. That warning can also apply to TSC.
 
 -S::
 --snapshot::

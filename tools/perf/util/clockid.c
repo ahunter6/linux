@@ -49,6 +49,9 @@ static const struct clockid_map clockids[] = {
 	CLOCKID_MAP("real", CLOCK_REALTIME),
 	CLOCKID_MAP("boot", CLOCK_BOOTTIME),
 
+	CLOCKID_MAP("perf_hw_clock", CLOCK_PERF_HW_CLOCK),
+	CLOCKID_MAP("perf_hw_clock_ns", CLOCK_PERF_HW_CLOCK_NS),
+
 	CLOCKID_END,
 };
 
@@ -57,6 +60,8 @@ static int get_clockid_res(clockid_t clk_id, u64 *res_ns)
 	struct timespec res;
 
 	*res_ns = 0;
+	if (clk_id >= CLOCK_PERF_HW_CLOCK)
+		return 0;
 	if (!clock_getres(clk_id, &res))
 		*res_ns = res.tv_nsec + res.tv_sec * NSEC_PER_SEC;
 	else
