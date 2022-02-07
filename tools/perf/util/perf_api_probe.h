@@ -13,5 +13,7 @@ bool perf_can_record_text_poke_events(void);
 bool perf_can_sample_identifier(void);
 bool perf_can_record_build_id(void);
 bool perf_can_record_cgroup(void);
+bool perf_can_perf_clock_hw_clock(void);
+bool perf_can_perf_clock_hw_clock_ns(void);
 
 #endif // __PERF_API_PROBE_H

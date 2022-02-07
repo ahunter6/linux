@@ -5,6 +5,7 @@
 #include "util/evlist.h"
 #include "util/evsel.h"
 #include "util/parse-events.h"
+#include "util/clockid.h"
 #include "util/perf_api_probe.h"
 #include <perf/cpumap.h>
 #include <errno.h>
@@ -109,6 +110,18 @@ static void perf_probe_cgroup(struct evsel *evsel)
 	evsel->core.attr.cgroup = 1;
 }
 
+static void perf_probe_hw_clock(struct evsel *evsel)
+{
+	evsel->core.attr.use_clockid = 1;
+	evsel->core.attr.clockid = CLOCK_PERF_HW_CLOCK;
+}
+
+static void perf_probe_hw_clock_ns(struct evsel *evsel)
+{
+	evsel->core.attr.use_clockid = 1;
+	evsel->core.attr.clockid = CLOCK_PERF_HW_CLOCK_NS;
+}
+
 bool perf_can_sample_identifier(void)
 {
 	return perf_probe_api(perf_probe_sample_identifier);
@@ -194,4 +207,14 @@ bool perf_can_record_build_id(void)
 bool perf_can_record_cgroup(void)
 {
 	return perf_probe_api(perf_probe_cgroup);
+}
+
+bool perf_can_perf_clock_hw_clock(void)
+{
+	return perf_probe_api(perf_probe_hw_clock);
+}
+
+bool perf_can_perf_clock_hw_clock_ns(void)
+{
+	return perf_probe_api(perf_probe_hw_clock_ns);
 }
