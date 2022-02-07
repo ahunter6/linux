@@ -3,6 +3,8 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <sys/mman.h>
+
 #include <linux/compiler.h>
 #include <linux/perf_event.h>
 #include <linux/stddef.h>
@@ -14,6 +16,9 @@
 #include "synthetic-events.h"
 #include "debug.h"
 #include "tsc.h"
+#include "cpumap.h"
+#include "perf-sys.h"
+#include <internal/lib.h> /* page_size */
 
 u64 perf_time_to_tsc(u64 ns, struct perf_tsc_conversion *tc)
 {
@@ -69,6 +74,57 @@ int perf_read_tsc_conversion(const struct perf_event_mmap_page *pc,
 		return -EOPNOTSUPP;
 
 	return 0;
+}
+
+static int perf_read_tsc_conv_attr_cpu(struct perf_event_attr *attr,
+				       struct perf_cpu cpu,
+				       struct perf_tsc_conversion *tc)
+{
+	size_t len = 2 * page_size;
+	int fd, err = -EINVAL;
+	void *addr;
+
+	fd = sys_perf_event_open(attr, 0, cpu.cpu, -1, 0);
+	if (fd == -1)
+		return -EINVAL;
+
+	addr = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, 0);
+	if (addr == MAP_FAILED)
+		goto out_close;
+
+	err = perf_read_tsc_conversion(addr, tc);
+
+	munmap(addr, len);
+out_close:
+	close(fd);
+	return err;
+}
+
+static struct perf_cpu find_a_cpu(void)
+{
+	struct perf_cpu_map *cpus;
+	struct perf_cpu cpu = { .cpu = 0 };
+
+	cpus = perf_cpu_map__new(NULL);
+	if (!cpus)
+		return cpu;
+	cpu = cpus->map[0];
+	perf_cpu_map__put(cpus);
+	return cpu;
+}
+
+int perf_read_tsc_conv_for_clockid(s32 clockid, struct perf_tsc_conversion *tc)
+{
+	struct perf_event_attr attr = {
+		.size		= sizeof(attr),
+		.type		= PERF_TYPE_SOFTWARE,
+		.config		= PERF_COUNT_SW_DUMMY,
+		.exclude_kernel	= 1,
+		.use_clockid	= 1,
+		.clockid	= clockid,
+	};
+
+	return perf_read_tsc_conv_attr_cpu(&attr, find_a_cpu(), tc);
 }
 
 int perf_event__synth_time_conv(const struct perf_event_mmap_page *pc,
