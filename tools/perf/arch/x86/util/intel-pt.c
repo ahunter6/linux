@@ -31,6 +31,7 @@
 #include "../../../util/tsc.h"
 #include <internal/lib.h> // page_size
 #include "../../../util/intel-pt.h"
+#include "../../../util/clockid.h"
 
 #define KiB(x) ((x) * 1024)
 #define MiB(x) ((x) * 1024 * 1024)
@@ -290,6 +291,20 @@ static const char *intel_pt_find_filter(struct evlist *evlist,
 	return NULL;
 }
 
+static bool intel_pt_clockid(struct evlist *evlist, struct perf_pmu *intel_pt_pmu, s32 clockid)
+{
+	struct evsel *evsel;
+
+	evlist__for_each_entry(evlist, evsel) {
+		if (evsel->core.attr.type == intel_pt_pmu->type &&
+		    evsel->core.attr.use_clockid &&
+		    evsel->core.attr.clockid == clockid)
+			return true;
+	}
+
+	return false;
+}
+
 static size_t intel_pt_filter_bytes(const char *filter)
 {
 	size_t len = filter ? strlen(filter) : 0;
@@ -304,9 +319,11 @@ intel_pt_info_priv_size(struct auxtrace_record *itr, struct evlist *evlist)
 			container_of(itr, struct intel_pt_recording, itr);
 	const char *filter = intel_pt_find_filter(evlist, ptr->intel_pt_pmu);
 
-	ptr->priv_size = (INTEL_PT_AUXTRACE_PRIV_MAX * sizeof(u64)) +
+	ptr->priv_size = (INTEL_PT_AUXTRACE_PRIV_FIXED * sizeof(u64)) +
 			 intel_pt_filter_bytes(filter);
 	ptr->priv_size += sizeof(u64); /* Cap Event Trace */
+	ptr->priv_size += sizeof(u64); /* ns Time Shift */
+	ptr->priv_size += sizeof(u64); /* ns Time Multiplier */
 
 	return ptr->priv_size;
 }
@@ -413,6 +430,18 @@ static int intel_pt_info_fill(struct auxtrace_record *itr,
 	}
 
 	*info++ = event_trace;
+
+	if (intel_pt_clockid(session->evlist, ptr->intel_pt_pmu, CLOCK_PERF_HW_CLOCK)) {
+		struct perf_tsc_conversion ns_tc;
+
+		if (perf_read_tsc_conv_for_clockid(CLOCK_PERF_HW_CLOCK_NS, &ns_tc))
+			return -EINVAL;
+		*info++ = ns_tc.time_shift;
+		*info++ = ns_tc.time_mult;
+	} else {
+		*info++ = tc.time_shift;
+		*info++ = tc.time_mult;
+	}
 
 	return 0;
 }
@@ -664,8 +693,10 @@ static int intel_pt_recording_options(struct auxtrace_record *itr,
 		return -EINVAL;
 	}
 
-	if (opts->use_clockid) {
-		pr_err("Cannot use clockid (-k option) with " INTEL_PT_PMU_NAME "\n");
+	if (opts->use_clockid && opts->clockid != CLOCK_PERF_HW_CLOCK_NS &&
+	    opts->clockid != CLOCK_PERF_HW_CLOCK) {
+		pr_err("Cannot use clockid (-k option) with " INTEL_PT_PMU_NAME
+		       " except CLOCK_PERF_HW_CLOCK_NS and CLOCK_PERF_HW_CLOCK\n");
 		return -EINVAL;
 	}
 

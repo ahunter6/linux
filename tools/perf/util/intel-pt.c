@@ -89,6 +89,8 @@ struct intel_pt {
 
 	struct perf_tsc_conversion tc;
 	bool cap_user_time_zero;
+	u16 ns_time_shift;
+	u32 ns_time_mult;
 
 	struct itrace_synth_opts synth_opts;
 
@@ -1100,10 +1102,10 @@ static u64 intel_pt_ns_to_ticks(const struct intel_pt *pt, u64 ns)
 {
 	u64 quot, rem;
 
-	quot = ns / pt->tc.time_mult;
-	rem  = ns % pt->tc.time_mult;
-	return (quot << pt->tc.time_shift) + (rem << pt->tc.time_shift) /
-		pt->tc.time_mult;
+	quot = ns / pt->ns_time_mult;
+	rem  = ns % pt->ns_time_mult;
+	return (quot << pt->ns_time_shift) + (rem << pt->ns_time_shift) /
+		pt->ns_time_mult;
 }
 
 static struct ip_callchain *intel_pt_alloc_chain(struct intel_pt *pt)
@@ -3986,6 +3988,17 @@ int intel_pt_process_auxtrace_info(union perf_event *event,
 			fprintf(stdout, "  Cap Event Trace     %d\n",
 				pt->cap_event_trace);
 	}
+
+	if ((void *)info < info_end) {
+		pt->ns_time_shift = *info++;
+		pt->ns_time_mult = *info++;
+		if (dump_trace) {
+			fprintf(stdout, "  ns Time Shift       %d\n", pt->ns_time_shift);
+			fprintf(stdout, "  ns Time Multiplier  %d\n", pt->ns_time_mult);
+		}
+	}
+	if (!pt->ns_time_mult)
+		pt->ns_time_mult = 1;
 
 	pt->timeless_decoding = intel_pt_timeless_decoding(pt);
 	if (pt->timeless_decoding && !pt->tc.time_mult)
