@@ -22,6 +22,8 @@
 #include "tests.h"
 #include "pmu.h"
 #include "pmu-hybrid.h"
+#include "clockid.h"
+#include "perf_api_probe.h"
 
 /*
  * Except x86_64/i386 and Arm64, other archs don't support TSC in perf.  Just
@@ -47,15 +49,7 @@
 	}					\
 }
 
-/**
- * test__perf_time_to_tsc - test converting perf time to TSC.
- *
- * This function implements a test that checks that the conversion of perf time
- * to and from TSC is consistent with the order of events.  If the test passes
- * %0 is returned, otherwise %-1 is returned.  If TSC conversion is not
- * supported then then the test passes but " (not supported)" is printed.
- */
-static int test__perf_time_to_tsc(struct test_suite *test __maybe_unused, int subtest __maybe_unused)
+static int perf_time_to_tsc_test(bool use_clockid, s32 clockid)
 {
 	struct record_opts opts = {
 		.mmap_pages	     = UINT_MAX,
@@ -104,6 +98,8 @@ static int test__perf_time_to_tsc(struct test_suite *test __maybe_unused, int su
 	evsel->core.attr.comm = 1;
 	evsel->core.attr.disabled = 1;
 	evsel->core.attr.enable_on_exec = 0;
+	evsel->core.attr.use_clockid = use_clockid;
+	evsel->core.attr.clockid = clockid;
 
 	/*
 	 * For hybrid "cycles:u", it creates two events.
@@ -197,6 +193,34 @@ out_err:
 	evlist__delete(evlist);
 	perf_cpu_map__put(cpus);
 	perf_thread_map__put(threads);
+	return err;
+}
+
+/**
+ * test__perf_time_to_tsc - test converting perf time to TSC.
+ *
+ * This function implements a test that checks that the conversion of perf time
+ * to and from TSC is consistent with the order of events.  If the test passes
+ * %0 is returned, otherwise %-1 is returned.  If TSC conversion is not
+ * supported then the test passes but " (not supported)" is printed.
+ */
+static int test__perf_time_to_tsc(struct test_suite *test __maybe_unused,
+				  int subtest __maybe_unused)
+{
+	int err;
+
+	err = perf_time_to_tsc_test(false, 0);
+
+	if (!err && perf_can_perf_clock_hw_clock()) {
+		pr_debug("Testing CLOCK_PERF_HW_CLOCK\n");
+		err = perf_time_to_tsc_test(true, CLOCK_PERF_HW_CLOCK);
+	}
+
+	if (!err && perf_can_perf_clock_hw_clock_ns()) {
+		pr_debug("Testing CLOCK_PERF_HW_CLOCK_NS\n");
+		err = perf_time_to_tsc_test(true, CLOCK_PERF_HW_CLOCK_NS);
+	}
+
 	return err;
 }
 
