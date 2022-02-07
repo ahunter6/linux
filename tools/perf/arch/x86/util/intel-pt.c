@@ -24,6 +24,7 @@
 #include "../../../util/parse-events.h"
 #include "../../../util/pmu.h"
 #include "../../../util/debug.h"
+#include "../../../util/config.h"
 #include "../../../util/auxtrace.h"
 #include "../../../util/perf_api_probe.h"
 #include "../../../util/record.h"
@@ -328,13 +329,58 @@ intel_pt_info_priv_size(struct auxtrace_record *itr, struct evlist *evlist)
 	return ptr->priv_size;
 }
 
+struct tsc_art_ratio {
+	u32 *n;
+	u32 *d;
+};
+
+static int intel_pt_tsc_art_ratio(const char *var, const char *value, void *data)
+{
+	if (!strcmp(var, "intel-pt.tsc_art_ratio")) {
+		struct tsc_art_ratio *r = data;
+
+		if (sscanf(value, "%u:%u", r->n, r->d) != 2)
+			return -EINVAL;
+	}
+	return 0;
+}
+
+void intel_pt_tsc_ctc_ratio_from_config(u32 *n, u32 *d)
+{
+	struct tsc_art_ratio data = { .n = n, .d = d };
+
+	*n = 0;
+	*d = 0;
+	perf_config(intel_pt_tsc_art_ratio, &data);
+}
+
 static void intel_pt_tsc_ctc_ratio(u32 *n, u32 *d)
 {
 	unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
 
 	__get_cpuid(0x15, &eax, &ebx, &ecx, &edx);
+	if (!eax || !ebx) {
+		intel_pt_tsc_ctc_ratio_from_config(n, d);
+		return;
+	}
 	*n = ebx;
 	*d = eax;
+}
+
+static int intel_pt_max_nonturbo_ratio(const char *var, const char *value, void *data)
+{
+	if (!strcmp(var, "intel-pt.max_nonturbo_ratio")) {
+		unsigned int *max_nonturbo_ratio = data;
+
+		if (sscanf(value, "%u", max_nonturbo_ratio) != 1)
+			return -EINVAL;
+	}
+	return 0;
+}
+
+void intel_pt_max_nonturbo_ratio_from_config(unsigned int *max_non_turbo_ratio)
+{
+	perf_config(intel_pt_max_nonturbo_ratio, max_non_turbo_ratio);
 }
 
 static int intel_pt_info_fill(struct auxtrace_record *itr,
@@ -350,7 +396,7 @@ static int intel_pt_info_fill(struct auxtrace_record *itr,
 	bool cap_user_time_zero = false, per_cpu_mmaps;
 	u64 tsc_bit, mtc_bit, mtc_freq_bits, cyc_bit, noretcomp_bit;
 	u32 tsc_ctc_ratio_n, tsc_ctc_ratio_d;
-	unsigned long max_non_turbo_ratio;
+	unsigned int max_non_turbo_ratio;
 	size_t filter_str_len;
 	const char *filter;
 	int event_trace;
@@ -374,8 +420,10 @@ static int intel_pt_info_fill(struct auxtrace_record *itr,
 	intel_pt_tsc_ctc_ratio(&tsc_ctc_ratio_n, &tsc_ctc_ratio_d);
 
 	if (perf_pmu__scan_file(intel_pt_pmu, "max_nonturbo_ratio",
-				"%lu", &max_non_turbo_ratio) != 1)
+				"%u", &max_non_turbo_ratio) != 1)
 		max_non_turbo_ratio = 0;
+	if (!max_non_turbo_ratio)
+		intel_pt_max_nonturbo_ratio_from_config(&max_non_turbo_ratio);
 	if (perf_pmu__scan_file(intel_pt_pmu, "caps/event_trace",
 				"%d", &event_trace) != 1)
 		event_trace = 0;

@@ -3934,6 +3934,9 @@ int intel_pt_process_auxtrace_info(union perf_event *event,
 				    INTEL_PT_CYC_BIT);
 	}
 
+	if (!pt->tsc_ctc_ratio_n || !pt->tsc_ctc_ratio_d)
+		intel_pt_tsc_ctc_ratio_from_config(&pt->tsc_ctc_ratio_n, &pt->tsc_ctc_ratio_d);
+
 	if (intel_pt_has(auxtrace_info, INTEL_PT_MAX_NONTURBO_RATIO)) {
 		pt->max_non_turbo_ratio =
 			auxtrace_info->priv[INTEL_PT_MAX_NONTURBO_RATIO];
@@ -3941,6 +3944,9 @@ int intel_pt_process_auxtrace_info(union perf_event *event,
 				    INTEL_PT_MAX_NONTURBO_RATIO,
 				    INTEL_PT_MAX_NONTURBO_RATIO);
 	}
+
+	if (!pt->max_non_turbo_ratio)
+		intel_pt_max_nonturbo_ratio_from_config(&pt->max_non_turbo_ratio);
 
 	info = &auxtrace_info->priv[INTEL_PT_FILTER_STR_LEN] + 1;
 	info_end = (void *)auxtrace_info + auxtrace_info->header.size;

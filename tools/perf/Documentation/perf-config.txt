@@ -709,7 +709,11 @@ stat.*::
 
 intel-pt.*::
 
+	Variables that affect Intel PT.
+
 	intel-pt.cache-divisor::
+		If set, the decoder instruction cache size is based on DSO size
+		divided by this number.  Default is 64.
 
 	intel-pt.mispred-all::
 		If set, Intel PT decoder will set the mispred flag on all
@@ -720,6 +724,20 @@ intel-pt.*::
 		branches decoded without consuming any trace packets. If
 		the maximum is exceeded there will be a "Never-ending loop"
 		error. The default is 100000.
+
+	intel-pt.max_nonturbo_ratio::
+		The kernel provides /sys/bus/event_source/devices/intel_pt/max_nonturbo_ratio
+		which can be zero in a virtual machine.  The decoder needs this
+		information to correctly interpret timing packets, so the value
+		can be provided by this variable in that case. Note in the absence
+		of VMCS TSC Scaling, this is probably the same as the host value.
+
+	intel-pt.tsc_art_ratio::
+		The kernel provides /sys/bus/event_source/devices/intel_pt/tsc_art_ratio
+		which can be 0:0 in a virtual machine.  The decoder needs this
+		information to correctly interpret timing packets, so the value
+		can be provided by this variable in that case. Note in the absence
+		of VMCS TSC Scaling, this is probably the same as the host value.
 
 auxtrace.*::
 

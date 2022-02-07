@@ -7,6 +7,8 @@
 #ifndef INCLUDE__PERF_INTEL_PT_H__
 #define INCLUDE__PERF_INTEL_PT_H__
 
+#include <linux/types.h>
+
 #define INTEL_PT_PMU_NAME "intel_pt"
 
 enum {
@@ -43,5 +45,8 @@ int intel_pt_process_auxtrace_info(union perf_event *event,
 				   struct perf_session *session);
 
 struct perf_event_attr *intel_pt_pmu_default_config(struct perf_pmu *pmu);
+
+void intel_pt_tsc_ctc_ratio_from_config(u32 *n, u32 *d);
+void intel_pt_max_nonturbo_ratio_from_config(unsigned int *max_non_turbo_ratio);
 
 #endif
