@@ -509,6 +509,29 @@ notnt		Disable TNT packets.  Without TNT packets, it is not possible to walk
 		"0" otherwise.
 
 
+perf event clock
+~~~~~~~~~~~~~~~~
+
+Newer kernel and tools support 2 special clocks: CLOCK_PERF_HW_CLOCK which is
+TSC and CLOCK_PERF_HW_CLOCK_NS which is TSC converted to nanoseconds.
+CLOCK_PERF_HW_CLOCK_NS is the same as the default perf event clock, but it is
+not subject to paravirtualization, so it still works with Intel PT in a VM
+guest.  Note however, TSC may not be being fully virtualized, so the results
+may be unexpected.
+
+	--clockid CLOCK_PERF_HW_CLOCK_NS
+
+To use TSC instead of nanoseconds, use the option:
+
+	--clockid CLOCK_PERF_HW_CLOCK
+
+Beware forgetting that the time stamp of events will show TSC ticks
+(divided by 1,000,000,000) not seconds.
+
+Other clocks are not supported for use with Intel PT because they cannot be
+converted to/from TSC.
+
+
 AUX area sampling option
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1396,6 +1419,28 @@ There were none.
           :17006 17006 [001] 11500.262869216:  ffffffff8220116c error_entry+0xc ([guest.kernel.kallsyms])               pushq  %rdx
           :17006 17006 [001] 11500.262869216:  ffffffff8220116d error_entry+0xd ([guest.kernel.kallsyms])               pushq  %rcx
           :17006 17006 [001] 11500.262869216:  ffffffff8220116e error_entry+0xe ([guest.kernel.kallsyms])               pushq  %rax
+
+
+Tracing within a Virtual Machine
+--------------------------------
+
+When supported, using Intel PT within a virtual machine does not support TSC
+because the perf event clock is subject to paravirtualization.  That is
+overcome by the new CLOCK_PERF_HW_CLOCK_NS clock - refer 'perf event clock'
+above.  In addition, in a VM, the following might be zero:
+
+	/sys/bus/event_source/devices/intel_pt/max_nonturbo_ratio
+	/sys/bus/event_source/devices/intel_pt/tsc_art_ratio
+
+The decoder needs this information to correctly interpret timing packets,
+so the values can be provided by config variables in that case. Note in
+the absence of VMCS TSC Scaling, this is probably the same as the host values.
+The config variables are:
+
+	intel-pt.max_nonturbo_ratio
+	intel-pt.tsc_art_ratio
+
+For more information about perf config variables, refer linkperf:perf-config[1]
 
 
 Event Trace
