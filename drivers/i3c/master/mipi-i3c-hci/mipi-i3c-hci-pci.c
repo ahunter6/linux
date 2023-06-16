@@ -479,6 +479,8 @@ static const struct pci_device_id mipi_i3c_hci_pci_devices[] = {
 	{ PCI_VDEVICE(INTEL, 0x4d6f), (kernel_ulong_t)&intel_si_2_info},
 	/* Meteor Lake-P */
 	{ PCI_VDEVICE(INTEL, 0x7e7c), (kernel_ulong_t)&intel_si_1_info},
+	/* Meteor Lake-S */
+	{ PCI_VDEVICE(INTEL, 0x7f79), (kernel_ulong_t)&intel_si_1_info},
 	/* Lakefield */
 	{ PCI_VDEVICE(INTEL, 0x98ec), (kernel_ulong_t)&intel_si_1_info},
 	/* Panther Lake-H */
