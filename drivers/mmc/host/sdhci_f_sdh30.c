@@ -206,7 +206,7 @@ err:
 	return ret;
 }
 
-static int sdhci_f_sdh30_remove(struct platform_device *pdev)
+static void sdhci_f_sdh30_remove(struct platform_device *pdev)
 {
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct f_sdhost_priv *priv = sdhci_f_sdhost_priv(host);
@@ -216,8 +216,6 @@ static int sdhci_f_sdh30_remove(struct platform_device *pdev)
 	clk_disable_unprepare(priv->clk_iface);
 
 	sdhci_pltfm_unregister(pdev);
-
-	return 0;
 }
 
 #ifdef CONFIG_OF
@@ -245,8 +243,8 @@ static struct platform_driver sdhci_f_sdh30_driver = {
 		.acpi_match_table = ACPI_PTR(f_sdh30_acpi_ids),
 		.pm	= &sdhci_pltfm_pmops,
 	},
-	.probe	= sdhci_f_sdh30_probe,
-	.remove	= sdhci_f_sdh30_remove,
+	.probe = sdhci_f_sdh30_probe,
+	.remove_new = sdhci_f_sdh30_remove,
 };
 
 module_platform_driver(sdhci_f_sdh30_driver);
