@@ -730,7 +730,8 @@ static int i3c_hci_reset_and_init(struct i3c_hci *hci)
 	if (hci->quirks & HCI_QUIRK_OD_PP_TIMING)
 		amd_set_od_pp_timing(hci);
 
-	if (hci->vendor_mipi_id == MIPI_VENDOR_INTEL) {
+	if (hci->vendor_mipi_id == MIPI_VENDOR_INTEL ||
+	    hci->vendor_mipi_id == 0) {
 		/*
 		 * HACK. Slow down SCL Open Drain and Push Pull timings. This
 		 * makes SDR reads a little bit more reliable on a test setup
