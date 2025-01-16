@@ -213,6 +213,16 @@ static const struct mipi_i3c_hci_pci_info intel_mi_2_info = {
 	.control_instance_pm = true,
 };
 
+static const struct mipi_i3c_hci_pci_info intel_si_1_info = {
+	.init = intel_i3c_init,
+	.exit = intel_i3c_exit,
+	.name = "intel-lpss-i3c",
+	.id = {0},
+	.instance_offset = {0},
+	.instance_count = 1,
+	.control_instance_pm = true,
+};
+
 static const struct mipi_i3c_hci_pci_info intel_si_2_info = {
 	.init = intel_i3c_init,
 	.exit = intel_i3c_exit,
@@ -333,6 +343,10 @@ static int mipi_i3c_hci_pci_resume(struct device *dev)
 
 	if (!hci->info->control_instance_pm)
 		return 0;
+
+	/* Meteor Lake requires reset */
+	if (hci->pci->device == 0x7e7c)
+		intel_reset(hci->base + INTEL_PRIV_OFFSET);
 
 	ret = device_for_each_child(dev, &pm_data, mipi_i3c_hci_pci_resume_instance);
 	if (ret)
@@ -463,6 +477,8 @@ static const struct pci_device_id mipi_i3c_hci_pci_devices[] = {
 	/* Wildcat Lake-U */
 	{ PCI_VDEVICE(INTEL, 0x4d7c), (kernel_ulong_t)&intel_mi_1_info},
 	{ PCI_VDEVICE(INTEL, 0x4d6f), (kernel_ulong_t)&intel_si_2_info},
+	/* Meteor Lake-P */
+	{ PCI_VDEVICE(INTEL, 0x7e7c), (kernel_ulong_t)&intel_si_1_info},
 	/* Panther Lake-H */
 	{ PCI_VDEVICE(INTEL, 0xe37c), (kernel_ulong_t)&intel_mi_1_info},
 	{ PCI_VDEVICE(INTEL, 0xe36f), (kernel_ulong_t)&intel_si_2_info},
