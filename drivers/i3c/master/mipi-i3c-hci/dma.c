@@ -434,9 +434,10 @@ static void hci_dma_unmap_xfer(struct i3c_hci *hci,
 
 	for (i = 0; i < n; i++) {
 		xfer = xfer_list + i;
-		if (!xfer->data)
+		if (!xfer->data || !xfer->dma)
 			continue;
 		i3c_master_dma_unmap_single(xfer->dma);
+		xfer->dma = NULL;
 	}
 }
 
