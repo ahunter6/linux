@@ -163,6 +163,22 @@ static void intel_reset(void __iomem *priv)
 	writel(INTEL_RESETS_RESET, priv + INTEL_RESETS);
 }
 
+#define INTEL_DMA_CHKN_MODE			0x2F0
+#define INTEL_DMAC_NO_CLEAR_CTRL_Q_ON_ABORT	GENMASK(2,1)
+
+static void intel_i3c_clear_ctrl_on_abort(struct mipi_i3c_hci_pci *hci)
+{
+	u32 reg = readl(hci->base + INTEL_DMA_CHKN_MODE);
+
+	if (reg & INTEL_DMAC_NO_CLEAR_CTRL_Q_ON_ABORT) {
+		u32 old_reg = reg;
+
+		reg &= ~GENMASK(2,1);
+		dev_info(&hci->pci->dev, "%s: Writing %#x to DMA_Chkn_Mode (was %#x)\n", __func__, reg, old_reg);
+		writel(reg, hci->base + INTEL_DMA_CHKN_MODE);
+	}
+}
+
 static int intel_i3c_init(struct mipi_i3c_hci_pci *hci)
 {
 	struct intel_host *host = devm_kzalloc(&hci->pci->dev, sizeof(*host), GFP_KERNEL);
@@ -180,6 +196,8 @@ static int intel_i3c_init(struct mipi_i3c_hci_pci *hci)
 	host->priv = priv;
 
 	intel_reset(priv);
+
+	intel_i3c_clear_ctrl_on_abort(hci);
 
 	intel_ltr_expose(&hci->pci->dev);
 	intel_add_debugfs(hci);
@@ -358,6 +376,9 @@ static int mipi_i3c_hci_pci_resume(struct device *dev)
 	/* Meteor Lake requires reset */
 	if (hci->pci->device == 0x7e7c)
 		intel_reset(hci->base + INTEL_PRIV_OFFSET);
+
+	// TODO: Intel only
+	intel_i3c_clear_ctrl_on_abort(hci);
 
 	ret = device_for_each_child(dev, &pm_data, mipi_i3c_hci_pci_resume_instance);
 	if (ret)
