@@ -1344,6 +1344,10 @@ int pci_power_up(struct pci_dev *dev)
 	 * PME_En, and sets PowerState to 0.
 	 */
 	pci_write_config_word(dev, dev->pm_cap + PCI_PM_CTRL, 0);
+	if (dev->class == 0x0c0a00) {
+		dev_info(&dev->dev, "%s: writing 0 to PCI_PM_CTRL", __func__);
+		//dump_stack();
+	}
 
 	/* Mandatory transition delays; see PCI PM 1.2. */
 	if (state == PCI_D3hot)
@@ -1515,6 +1519,10 @@ static int pci_set_low_power_state(struct pci_dev *dev, pci_power_t state, bool 
 		pci_info_ratelimited(dev, "Refused to change power state from %s to %s\n",
 				     pci_power_name(dev->current_state),
 				     pci_power_name(state));
+	else if (dev->class == 0x0c0a00) {
+		pci_info_ratelimited(dev, "Change power state to %s\n", pci_power_name(state));
+		//dump_stack();
+	}
 
 	if (dev->bus->self)
 		pcie_aspm_pm_state_change(dev->bus->self, locked);
