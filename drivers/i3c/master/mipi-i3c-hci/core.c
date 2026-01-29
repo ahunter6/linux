@@ -733,7 +733,7 @@ static int i3c_hci_reset_and_init(struct i3c_hci *hci)
 	return 0;
 }
 
-static int i3c_hci_runtime_suspend(struct device *dev)
+int i3c_hci_runtime_suspend(struct device *dev)
 {
 	struct i3c_hci *hci = dev_get_drvdata(dev);
 	int ret;
@@ -746,8 +746,9 @@ static int i3c_hci_runtime_suspend(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(i3c_hci_runtime_suspend);
 
-static int i3c_hci_runtime_resume(struct device *dev)
+int i3c_hci_runtime_resume(struct device *dev)
 {
 	struct i3c_hci *hci = dev_get_drvdata(dev);
 	int ret;
@@ -768,6 +769,7 @@ static int i3c_hci_runtime_resume(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(i3c_hci_runtime_resume);
 
 static int i3c_hci_suspend(struct device *dev)
 {
@@ -784,12 +786,14 @@ static int i3c_hci_resume_common(struct device *dev, bool rstdaa)
 	struct i3c_hci *hci = dev_get_drvdata(dev);
 	int ret;
 
-	if (!(hci->quirks & HCI_QUIRK_RPM_ALLOWED))
-		return 0;
+	if (!(hci->quirks & HCI_QUIRK_RPM_PARENT_MANAGED)) {
+		if (!(hci->quirks & HCI_QUIRK_RPM_ALLOWED))
+			return 0;
 
-	ret = pm_runtime_force_resume(dev);
-	if (ret)
-		return ret;
+		ret = pm_runtime_force_resume(dev);
+		if (ret)
+			return ret;
+	}
 
 	ret = i3c_master_do_daa_ext(&hci->master, rstdaa);
 	if (ret)
@@ -811,8 +815,6 @@ static int i3c_hci_restore(struct device *dev)
 {
 	return i3c_hci_resume_common(dev, true);
 }
-
-#define DEFAULT_AUTOSUSPEND_DELAY_MS 1000
 
 static void i3c_hci_rpm_enable(struct device *dev)
 {
@@ -961,6 +963,11 @@ static int i3c_hci_probe(struct platform_device *pdev)
 
 	if (hci->quirks & HCI_QUIRK_RPM_IBI_ALLOWED)
 		hci->master.rpm_ibi_allowed = true;
+
+	if (hci->quirks & HCI_QUIRK_RPM_PARENT_MANAGED) {
+		hci->master.rpm_dev = pdev->dev.parent;
+		hci->master.rpm_allowed = true;
+	}
 
 	return i3c_master_register(&hci->master, &pdev->dev, &i3c_hci_ops, false);
 }
