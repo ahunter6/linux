@@ -108,10 +108,10 @@ static struct i3c_master_controller *dev_to_i3cmaster(struct device *dev)
 
 static int __must_check i3c_master_rpm_get(struct i3c_master_controller *master)
 {
-	int ret = master->rpm_allowed ? pm_runtime_resume_and_get(master->dev.parent) : 0;
+	int ret = master->rpm_allowed ? pm_runtime_resume_and_get(master->rpm_dev) : 0;
 
 	if (ret < 0) {
-		dev_err(master->dev.parent, "runtime resume failed, error %d\n", ret);
+		dev_err(master->rpm_dev, "runtime resume failed, error %d\n", ret);
 		return ret;
 	}
 	return 0;
@@ -120,7 +120,7 @@ static int __must_check i3c_master_rpm_get(struct i3c_master_controller *master)
 static void i3c_master_rpm_put(struct i3c_master_controller *master)
 {
 	if (master->rpm_allowed)
-		pm_runtime_put_autosuspend(master->dev.parent);
+		pm_runtime_put_autosuspend(master->rpm_dev);
 }
 
 int i3c_bus_rpm_get(struct i3c_bus *bus)
@@ -2974,6 +2974,9 @@ int i3c_master_register(struct i3c_master_controller *master,
 	master->secondary = secondary;
 	INIT_LIST_HEAD(&master->boardinfo.i2c);
 	INIT_LIST_HEAD(&master->boardinfo.i3c);
+
+	if (!master->rpm_dev)
+		master->rpm_dev = parent;
 
 	ret = i3c_master_rpm_get(master);
 	if (ret)
