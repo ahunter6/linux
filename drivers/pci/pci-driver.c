@@ -783,6 +783,9 @@ static int pci_pm_suspend(struct device *dev)
 	struct pci_dev *pci_dev = to_pci_dev(dev);
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 
+	if (pci_dev->class == 0x0c0a00)
+		dev_info(dev, "%s\n", __func__);
+
 	pci_dev->skip_bus_pm = false;
 
 	/*
@@ -990,6 +993,9 @@ static int pci_pm_resume(struct device *dev)
 {
 	struct pci_dev *pci_dev = to_pci_dev(dev);
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
+
+	if (pci_dev->class == 0x0c0a00)
+		dev_info(dev, "%s\n", __func__);
 
 	/*
 	 * This is necessary for the suspend error path in which resume is

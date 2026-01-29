@@ -270,8 +270,11 @@ static bool __mipi_i3c_hci_pci_is_operational(struct device *dev)
 {
 	const struct mipi_i3c_hci_platform_data *pdata = dev->platform_data;
 	u32 hc_control = readl(pdata->base_regs + HC_CONTROL);
+	bool result = hc_control & HC_CONTROL_BUS_ENABLE;
 
-	return hc_control & HC_CONTROL_BUS_ENABLE;
+	dev_info(dev, "%s: result %d\n", __func__, result);
+
+	return result;
 }
 
 static bool mipi_i3c_hci_pci_is_operational(struct device *dev, bool update)
@@ -305,6 +308,8 @@ static int mipi_i3c_hci_pci_suspend_instance(struct device *dev, void *data)
 	struct mipi_i3c_hci_pci_pm_data *pm_data = data;
 	int ret;
 
+	dev_info(dev, "%s\n", __func__);
+
 	if (!mipi_i3c_hci_pci_is_mfd(dev) ||
 	    !mipi_i3c_hci_pci_is_operational(dev, true))
 		return 0;
@@ -334,6 +339,8 @@ static int mipi_i3c_hci_pci_resume_instance(struct device *dev, void *data)
 	struct mipi_i3c_hci_pci_pm_data *pm_data = data;
 	int ret;
 
+	dev_info(dev, "%s\n", __func__);
+
 	if (!mipi_i3c_hci_pci_is_mfd(dev) ||
 	    !mipi_i3c_hci_pci_is_operational(dev, false))
 		return 0;
@@ -353,6 +360,8 @@ static int mipi_i3c_hci_pci_suspend(struct device *dev)
 	struct mipi_i3c_hci_pci_pm_data pm_data = {};
 	int ret;
 
+	dev_info(dev, "%s\n", __func__);
+
 	if (!hci->info->control_instance_pm)
 		return 0;
 
@@ -369,6 +378,8 @@ static int mipi_i3c_hci_pci_resume(struct device *dev)
 	struct mipi_i3c_hci_pci *hci = dev_get_drvdata(dev);
 	struct mipi_i3c_hci_pci_pm_data pm_data = {};
 	int ret;
+
+	dev_info(dev, "%s\n", __func__);
 
 	if (!hci->info->control_instance_pm)
 		return 0;

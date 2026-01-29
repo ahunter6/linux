@@ -750,6 +750,8 @@ int i3c_hci_rpm_suspend(struct device *dev)
 	struct i3c_hci *hci = dev_get_drvdata(dev);
 	int ret;
 
+	dev_info(dev, "%s\n", __func__);
+
 	ret = i3c_hci_bus_disable(hci);
 	if (ret)
 		return ret;
@@ -764,6 +766,8 @@ int i3c_hci_rpm_resume(struct device *dev)
 {
 	struct i3c_hci *hci = dev_get_drvdata(dev);
 	int ret;
+
+	dev_info(dev, "%s\n", __func__);
 
 	ret = i3c_hci_reset_and_init(hci);
 	if (ret)
@@ -807,6 +811,8 @@ static int i3c_hci_suspend(struct device *dev)
 {
 	struct i3c_hci *hci = dev_get_drvdata(dev);
 
+	dev_info(dev, "%s\n", __func__);
+
 	if (!(hci->quirks & HCI_QUIRK_RPM_ALLOWED))
 		return 0;
 
@@ -838,11 +844,13 @@ static int i3c_hci_resume_common(struct device *dev, bool rstdaa)
 
 static int i3c_hci_resume(struct device *dev)
 {
+	dev_info(dev, "%s\n", __func__);
 	return i3c_hci_resume_common(dev, false);
 }
 
 static int i3c_hci_restore(struct device *dev)
 {
+	dev_info(dev, "%s\n", __func__);
 	return i3c_hci_resume_common(dev, true);
 }
 
