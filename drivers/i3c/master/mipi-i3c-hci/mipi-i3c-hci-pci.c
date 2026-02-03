@@ -291,6 +291,17 @@ static int mipi_i3c_hci_pci_suspend_instance(struct device *dev, void *data)
 	    !mipi_i3c_hci_pci_is_operational(dev, true))
 		return 0;
 
+	if (dev->pm_domain)
+		dev_info(dev,"%s: has pm_domain\n", __func__);
+	if (dev->type && dev->type->pm)
+		dev_info(dev,"%s: has dev->type->pm\n", __func__);
+	if (dev->class && dev->class->pm)
+		dev_info(dev,"%s: has dev->class->pm\n", __func__);
+	if (dev->bus && dev->bus->pm)
+		dev_info(dev,"%s: has dev->bus->pm\n", __func__);
+	if (dev->driver && dev->driver->pm)
+		dev_info(dev,"%s: has dev->driver->pm\n", __func__);
+
 	ret = i3c_hci_rpm_suspend(dev);
 	if (ret)
 		return ret;
