@@ -738,6 +738,7 @@ static int i3c_hci_reset_and_init(struct i3c_hci *hci)
 		 * where I3C components are connected using test wires outside
 		 * of motherboard.
 		 */
+		dev_info(&hci->master.dev, "Slowing down bus\n");
 		writel(0xff00ff, hci->EXTCAPS_regs + 0x14); /* SCL_I3C_OD_TIMING */
 		writel(0xf000f, hci->EXTCAPS_regs + 0x18); /* SCL_I3C_PP_TIMING */
 	}
