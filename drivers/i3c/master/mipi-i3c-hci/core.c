@@ -264,6 +264,7 @@ static int i3c_hci_send_ccc_cmd(struct i3c_master_controller *m,
 		ret = -ETIME;
 		goto out;
 	}
+	dma_dump(hci, DUMP_POINT_CCC);
 	for (i = prefixed; i < nxfers; i++) {
 		if (ccc->rnw)
 			ccc->dests[i - prefixed].payload.len =
@@ -342,6 +343,7 @@ static int i3c_hci_i3c_xfers(struct i3c_dev_desc *dev,
 	    hci->io->dequeue_xfer(hci, xfer, nxfers)) {
 		ret = -ETIME;
 		goto out;
+	dma_dump(hci, DUMP_POINT_I3C_XFER);
 	}
 	for (i = 0; i < nxfers; i++) {
 		if (i3c_xfers[i].rnw)
@@ -1003,12 +1005,20 @@ static int i3c_hci_probe(struct platform_device *pdev)
 	if (hci->quirks & HCI_QUIRK_RPM_IBI_ALLOWED)
 		hci->master.rpm_ibi_allowed = true;
 
-	return i3c_master_register(&hci->master, &pdev->dev, &i3c_hci_ops, false);
+	ret = i3c_master_register(&hci->master, &pdev->dev, &i3c_hci_ops, false);
+	if (ret)
+		return ret;
+
+	dma_debugfs_init(hci);
+
+	return 0;
 }
 
 static void i3c_hci_remove(struct platform_device *pdev)
 {
 	struct i3c_hci *hci = platform_get_drvdata(pdev);
+
+	dma_debugfs_exit(hci);
 
 	i3c_master_unregister(&hci->master);
 }

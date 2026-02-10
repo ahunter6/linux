@@ -337,6 +337,7 @@ static int hci_cmd_v1_daa(struct i3c_hci *hci)
 			ret = -ETIME;
 			break;
 		}
+		dma_dump(hci, DUMP_POINT_DAA);
 		if ((RESP_STATUS(xfer->response) == RESP_ERR_ADDR_HEADER ||
 		     RESP_STATUS(xfer->response) == RESP_ERR_NACK) &&
 		    RESP_DATA_LENGTH(xfer->response) == 1) {

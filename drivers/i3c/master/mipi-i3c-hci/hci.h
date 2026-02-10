@@ -68,6 +68,10 @@ struct i3c_hci {
 	u32 vendor_version_id;
 	u32 vendor_product_id;
 	void *vendor_data;
+	bool dump_on_dequeue;
+	bool dump_after_daa;
+	bool dump_after_ccc;
+	bool dump_after_i3c_xfer;
 };
 
 /*
@@ -161,5 +165,18 @@ void i3c_hci_sync_irq_inactive(struct i3c_hci *hci);
 
 int i3c_hci_rpm_suspend(struct device *dev);
 int i3c_hci_rpm_resume(struct device *dev);
+
+void dma_debugfs_init(struct i3c_hci *hci);
+void dma_debugfs_exit(struct i3c_hci *hci);
+
+enum {
+	DUMP_POINT_NO_DUMP,
+	DUMP_POINT_DEQUEUE,
+	DUMP_POINT_DAA,
+	DUMP_POINT_CCC,
+	DUMP_POINT_I3C_XFER,
+};
+
+void dma_dump(struct i3c_hci *hci, int dump_point);
 
 #endif
