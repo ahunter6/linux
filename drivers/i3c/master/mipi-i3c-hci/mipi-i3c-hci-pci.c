@@ -168,6 +168,7 @@ static void intel_reset(void __iomem *priv)
 
 static void intel_i3c_clear_ctrl_on_abort(struct mipi_i3c_hci_pci *hci)
 {
+#if 0
 	u32 reg = readl(hci->base + INTEL_DMA_CHKN_MODE);
 
 	if (reg & INTEL_DMAC_NO_CLEAR_CTRL_Q_ON_ABORT) {
@@ -177,6 +178,7 @@ static void intel_i3c_clear_ctrl_on_abort(struct mipi_i3c_hci_pci *hci)
 		dev_info(&hci->pci->dev, "%s: Writing %#x to DMA_Chkn_Mode (was %#x)\n", __func__, reg, old_reg);
 		writel(reg, hci->base + INTEL_DMA_CHKN_MODE);
 	}
+#endif
 }
 
 static int intel_i3c_init(struct mipi_i3c_hci_pci *hci)

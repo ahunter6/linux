@@ -1204,6 +1204,7 @@ static void hci_dma_init_rings(struct i3c_hci *hci)
 	struct hci_rings_data *rings = hci->io_data;
 	u32 regval;
 
+#if 0
 	void __iomem *base_regs = hci->base_regs;
 	void __iomem *base = (void *)((u64)base_regs & ~(u64)0xfff);
 	regval = readl(base + 0x2F0); // DMA_Chkn_Mode
@@ -1212,6 +1213,7 @@ static void hci_dma_init_rings(struct i3c_hci *hci)
 		dev_info(&hci->master.dev, "%s: Writing %#x to DMA_Chkn_Mode (was %#x)\n", __func__, new_regval, regval);
 		writel(new_regval, base + 0x2F0); // DMA_Chkn_Mode
 	}
+#endif
 
 	regval = FIELD_PREP(MAX_HEADER_COUNT, rings->total);
 	rhs_reg_write(CONTROL, regval);
