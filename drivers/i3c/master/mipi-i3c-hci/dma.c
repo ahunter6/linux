@@ -1003,6 +1003,38 @@ static void debug_dump(struct i3c_hci *hci)
 		dump_regs(hci, base, dma_regs_1, ARRAY_SIZE(dma_regs_1));
 }
 
+static ssize_t do_daa_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
+{
+	struct i3c_hci *hci = file->private_data;
+	int ret;
+
+	ret = i3c_master_do_daa(&hci->master);
+	dev_info(&hci->master.dev, "i3c_master_do_daa ret %d\n", ret);
+
+	return ret ? -EINVAL : count;
+}
+
+static const struct file_operations fops_do_daa = {
+	.open	= simple_open,
+	.write	= do_daa_write,
+};
+
+static ssize_t rstdaa_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
+{
+	struct i3c_hci *hci = file->private_data;
+	int ret;
+
+	ret = i3c_master_rstdaa(&hci->master);
+	dev_info(&hci->master.dev, "i3c_master_rstdaa ret %d\n", ret);
+
+	return ret ? -EINVAL : count;
+}
+
+static const struct file_operations fops_rstdaa = {
+	.open	= simple_open,
+	.write	= rstdaa_write,
+};
+
 #include <linux/debugfs.h>
 
 void dma_debugfs_init(struct i3c_hci *hci)
@@ -1013,6 +1045,9 @@ void dma_debugfs_init(struct i3c_hci *hci)
 	debugfs_create_bool("dump_after_daa",      0600, dir, &hci->dump_after_daa);
 	debugfs_create_bool("dump_after_ccc",      0600, dir, &hci->dump_after_ccc);
 	debugfs_create_bool("dump_after_i3c_xfer", 0600, dir, &hci->dump_after_i3c_xfer);
+
+	debugfs_create_file("do_daa", 0200, dir, hci, &fops_do_daa);
+	debugfs_create_file("rstdaa", 0200, dir, hci, &fops_rstdaa);
 }
 
 void dma_debugfs_exit(struct i3c_hci *hci)

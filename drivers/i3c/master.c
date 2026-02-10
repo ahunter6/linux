@@ -1800,6 +1800,28 @@ int i3c_master_do_daa(struct i3c_master_controller *master)
 }
 EXPORT_SYMBOL_GPL(i3c_master_do_daa);
 
+int i3c_master_rstdaa(struct i3c_master_controller *master)
+{
+	int ret;
+
+	ret = i3c_master_rpm_get(master);
+	if (ret)
+		return ret;
+
+	i3c_bus_maintenance_lock(&master->bus);
+
+	ret = i3c_master_rstdaa_locked(master, I3C_BROADCAST_ADDR);
+	if (ret == I3C_ERROR_M2)
+		ret = 0;
+
+	i3c_bus_maintenance_unlock(&master->bus);
+
+	i3c_master_rpm_put(master);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(i3c_master_rstdaa);
+
 /**
  * i3c_master_dma_map_single() - Map buffer for single DMA transfer
  * @dev: device object of a device doing DMA
