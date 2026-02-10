@@ -315,7 +315,7 @@ static int hci_cmd_v1_daa(struct i3c_hci *hci)
 			break;
 		next_addr = ret;
 
-		dev_dbg(&hci->master.dev,
+		dev_info(&hci->master.dev,
 			"next_addr = 0x%02x, DAA using DAT %d",
 			next_addr, dat_idx);
 		mipi_i3c_hci_dat_v1.set_dynamic_addr(hci, dat_idx, next_addr);
@@ -335,6 +335,7 @@ static int hci_cmd_v1_daa(struct i3c_hci *hci)
 		if (!wait_for_completion_timeout(&done, HZ) &&
 		    hci->io->dequeue_xfer(hci, xfer, 1)) {
 			ret = -ETIME;
+			dev_err(&hci->master.dev,"%s: timeout error\n", __func__);
 			break;
 		}
 		dma_dump(hci, DUMP_POINT_DAA);
@@ -342,15 +343,17 @@ static int hci_cmd_v1_daa(struct i3c_hci *hci)
 		     RESP_STATUS(xfer->response) == RESP_ERR_NACK) &&
 		    RESP_DATA_LENGTH(xfer->response) == 1) {
 			ret = 0;  /* no more devices to be assigned */
+			dev_info(&hci->master.dev,"%s: no more devices to be assigned\n", __func__);
 			break;
 		}
 		if (RESP_STATUS(xfer->response) != RESP_SUCCESS) {
 			ret = -EIO;
+			dev_err(&hci->master.dev,"%s: not success response\n", __func__);
 			break;
 		}
 
 		i3c_hci_dct_get_val(hci, 0, &pid, &dcr, &bcr);
-		dev_dbg(&hci->master.dev,
+		dev_info(&hci->master.dev,
 			"assigned address %#x to device PID=0x%llx DCR=%#x BCR=%#x",
 			next_addr, pid, dcr, bcr);
 
@@ -362,8 +365,10 @@ static int hci_cmd_v1_daa(struct i3c_hci *hci)
 		 * new device and provide BCR/DCR/PID at the same time.
 		 */
 		ret = i3c_master_add_i3c_dev_locked(&hci->master, next_addr);
-		if (ret)
+		if (ret) {
+			dev_err(&hci->master.dev,"%s: i3c_master_add_i3c_dev_locked failed\n", __func__);
 			break;
+		}
 	}
 
 	if (dat_idx >= 0)

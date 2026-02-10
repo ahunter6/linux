@@ -223,7 +223,7 @@ static int i3c_hci_send_ccc_cmd(struct i3c_master_controller *m,
 	DECLARE_COMPLETION_ONSTACK(done);
 	int i, last, ret = 0;
 
-	dev_dbg(&hci->master.dev, "cmd=%#x rnw=%d ndests=%d data[0].len=%d",
+	dev_info(&hci->master.dev, "cmd=%#x rnw=%d ndests=%d data[0].len=%d",
 		ccc->id, ccc->rnw, ccc->ndests, ccc->dests[0].payload.len);
 
 	xfer = hci_alloc_xfer(nxfers);
@@ -283,7 +283,7 @@ static int i3c_hci_send_ccc_cmd(struct i3c_master_controller *m,
 	}
 
 	if (ccc->rnw)
-		dev_dbg(&hci->master.dev, "got: %*ph",
+		dev_info(&hci->master.dev, "got: %*ph",
 			ccc->dests[0].payload.len, ccc->dests[0].payload.data);
 
 out:
@@ -309,7 +309,7 @@ static int i3c_hci_i3c_xfers(struct i3c_dev_desc *dev,
 	unsigned int size_limit;
 	int i, last, ret = 0;
 
-	dev_dbg(&hci->master.dev, "nxfers = %d", nxfers);
+	dev_info(&hci->master.dev, "%s: nxfers = %d\n", __func__, nxfers);
 
 	xfer = hci_alloc_xfer(nxfers);
 	if (!xfer)
@@ -336,20 +336,23 @@ static int i3c_hci_i3c_xfers(struct i3c_dev_desc *dev,
 	xfer[last].cmd_desc[0] |= CMD_0_TOC;
 	xfer[last].completion = &done;
 
+	dma_dump(hci, DUMP_POINT_I3C_XFER);
 	ret = hci->io->queue_xfer(hci, xfer, nxfers);
 	if (ret)
 		goto out;
 	if (!wait_for_completion_timeout(&done, HZ) &&
 	    hci->io->dequeue_xfer(hci, xfer, nxfers)) {
 		ret = -ETIME;
+		dev_info(&hci->master.dev, "%s: timeout\n", __func__);
 		goto out;
-	dma_dump(hci, DUMP_POINT_I3C_XFER);
 	}
+	dma_dump(hci, DUMP_POINT_I3C_XFER);
 	for (i = 0; i < nxfers; i++) {
 		if (i3c_xfers[i].rnw)
 			i3c_xfers[i].len = RESP_DATA_LENGTH(xfer[i].response);
 		if (RESP_STATUS(xfer[i].response) != RESP_SUCCESS) {
 			ret = -EIO;
+			dev_info(&hci->master.dev, "%s: not RESP_SUCCESS\n", __func__);
 			goto out;
 		}
 	}
@@ -368,7 +371,7 @@ static int i3c_hci_i2c_xfers(struct i2c_dev_desc *dev,
 	DECLARE_COMPLETION_ONSTACK(done);
 	int i, last, ret = 0;
 
-	dev_dbg(&hci->master.dev, "nxfers = %d", nxfers);
+	dev_info(&hci->master.dev, "%s: I2C nxfers = %d\n", __func__, nxfers);
 
 	xfer = hci_alloc_xfer(nxfers);
 	if (!xfer)
@@ -578,13 +581,13 @@ static irqreturn_t i3c_hci_irq_handler(int irq, void *dev_id)
 
 	val = reg_read(INTR_STATUS);
 	reg_write(INTR_STATUS, val);
-	dev_dbg(&hci->master.dev, "INTR_STATUS %#x", val);
+	dev_info(&hci->master.dev, "INTR_STATUS %#x", val);
 
 	if (val)
 		result = IRQ_HANDLED;
 
 	if (val & INTR_HC_SEQ_CANCEL) {
-		dev_dbg(&hci->master.dev,
+		dev_info(&hci->master.dev,
 			"Host Controller Cancelled Transaction Sequence\n");
 		val &= ~INTR_HC_SEQ_CANCEL;
 	}
@@ -755,7 +758,7 @@ int i3c_hci_rpm_suspend(struct device *dev)
 	dev_info(dev, "%s\n", __func__);
 
 	ret = i3c_hci_bus_disable(hci);
-	if (ret)
+	if (ret && 0)
 		return ret;
 
 	hci->io->suspend(hci);

@@ -1419,7 +1419,7 @@ static int hci_dma_queue_xfer(struct i3c_hci *hci,
 	struct hci_rings_data *rings = hci->io_data;
 	struct hci_rh_data *rh;
 	unsigned int i, ring, enqueue_ptr;
-	u32 op1_val;
+	u32 op1_val, op2_val;
 	int ret;
 
 	ret = hci_dma_map_xfer_list(hci, rings->sysdev, xfer_list, n);
@@ -1439,10 +1439,15 @@ static int hci_dma_queue_xfer(struct i3c_hci *hci,
 	}
 
 	op1_val = rh_reg_read(RING_OPERATION1);
+	dev_info(&hci->master.dev, "%s: read op1 %#x\n", __func__, op1_val);
+	op2_val = rh_reg_read(RING_OPERATION2);
+	dev_info(&hci->master.dev, "%s: read op2 %#x\n", __func__, op2_val);
 	enqueue_ptr = FIELD_GET(RING_OP1_CR_ENQ_PTR, op1_val);
 	for (i = 0; i < n; i++) {
 		struct hci_xfer *xfer = xfer_list + i;
 		u32 *ring_data = rh->xfer + rh->xfer_struct_sz * enqueue_ptr;
+
+		dev_info(&hci->master.dev, "%s: enqueue_ptr %u tid %u\n", __func__, enqueue_ptr, xfer->cmd_tid);
 
 		/* store cmd descriptor */
 		*ring_data++ = xfer->cmd_desc[0];
@@ -1481,6 +1486,7 @@ static int hci_dma_queue_xfer(struct i3c_hci *hci,
 
 	op1_val &= ~RING_OP1_CR_ENQ_PTR;
 	op1_val |= FIELD_PREP(RING_OP1_CR_ENQ_PTR, enqueue_ptr);
+	dev_info(&hci->master.dev, "%s: write op1 %#x\n", __func__, op1_val);
 	rh_reg_write(RING_OPERATION1, op1_val);
 	spin_unlock_irq(&rh->lock);
 
@@ -1525,6 +1531,7 @@ static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 		 * descriptor entries with a no-op.
 		 */
 		if (idx >= 0) {
+			dev_info(&hci->master.dev, "%s: enqueue_ptr %d xfer %d of %d tid %u replace with no-op\n", __func__, idx, i + 1, n, xfer->cmd_tid);
 			u32 *ring_data = rh->xfer + rh->xfer_struct_sz * idx;
 
 			/* store no-op cmd descriptor */
@@ -1562,17 +1569,18 @@ static void hci_dma_xfer_done(struct i3c_hci *hci, struct hci_rh_data *rh)
 
 	for (;;) {
 		op2_val = rh_reg_read(RING_OPERATION2);
+		dev_info(&hci->master.dev, "%s: read op2 %#x\n", __func__, op2_val);
 		if (done_ptr == FIELD_GET(RING_OP2_CR_DEQ_PTR, op2_val))
 			break;
 
 		ring_resp = rh->resp + rh->resp_struct_sz * done_ptr;
 		resp = *ring_resp;
 		tid = RESP_TID(resp);
-		dev_dbg(&hci->master.dev, "resp = 0x%08x", resp);
+		dev_info(&hci->master.dev, "resp = 0x%08x tid = %u done_ptr = %u\n", resp, tid, done_ptr);
 
 		xfer = rh->src_xfers[done_ptr];
 		if (!xfer) {
-			dev_dbg(&hci->master.dev, "orphaned ring entry");
+			dev_info(&hci->master.dev, "orphaned ring entry");
 		} else {
 			hci_dma_unmap_xfer(hci, xfer, 1);
 			xfer->ring_entry = -1;
@@ -1585,6 +1593,8 @@ static void hci_dma_xfer_done(struct i3c_hci *hci, struct hci_rh_data *rh)
 			}
 			if (xfer->completion)
 				complete(xfer->completion);
+			else
+				dev_info(&hci->master.dev, "no xfer->completion");
 		}
 
 		done_ptr = (done_ptr + 1) % rh->xfer_entries;
@@ -1596,8 +1606,10 @@ static void hci_dma_xfer_done(struct i3c_hci *hci, struct hci_rh_data *rh)
 	spin_lock(&rh->lock);
 	rh->xfer_space += done_cnt;
 	op1_val = rh_reg_read(RING_OPERATION1);
+	dev_info(&hci->master.dev, "%s: read op1 %#x\n", __func__, op1_val);
 	op1_val &= ~RING_OP1_CR_SW_DEQ_PTR;
 	op1_val |= FIELD_PREP(RING_OP1_CR_SW_DEQ_PTR, done_ptr);
+	dev_info(&hci->master.dev, "%s: write op1 %#x\n", __func__, op1_val);
 	rh_reg_write(RING_OPERATION1, op1_val);
 	spin_unlock(&rh->lock);
 }
@@ -1807,7 +1819,7 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 
 		rh = &rings->headers[i];
 		status = rh_reg_read(INTR_STATUS);
-		dev_dbg(&hci->master.dev, "Ring %d: RH_INTR_STATUS %#x",
+		dev_info(&hci->master.dev, "Ring %d: RH_INTR_STATUS %#x",
 			i, status);
 		if (!status)
 			continue;
@@ -1826,6 +1838,7 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 			dev_dbg_ratelimited(&hci->master.dev, "Ring %d: Transfer Aborted\n", i);
 			//mipi_i3c_hci_resume(hci);
 			ring_status = rh_reg_read(RING_STATUS);
+			dev_info(&hci->master.dev, "Ring %d: Transfer Aborted ring_status %#x\n", i, ring_status);
 			if (!(ring_status & RING_STATUS_RUNNING) &&
 			    status & INTR_TRANSFER_COMPLETION &&
 			    status & INTR_TRANSFER_ERR) {
@@ -1840,6 +1853,8 @@ static bool hci_dma_irq_handler(struct i3c_hci *hci)
 				rh_reg_write(RING_CONTROL, RING_CTRL_ENABLE);
 				rh_reg_write(RING_CONTROL, RING_CTRL_ENABLE |
 							   RING_CTRL_RUN_STOP);
+				ring_status = rh_reg_read(RING_STATUS);
+				dev_info(&hci->master.dev, "Ring %d: Transfer Aborted ring_status %#x plus stop/run\n", i, ring_status);
 			}
 		}
 		if (status & INTR_IBI_RING_FULL)

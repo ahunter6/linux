@@ -1722,6 +1722,8 @@ i3c_master_register_new_i3c_devs(struct i3c_master_controller *master)
 		dev_set_name(&desc->dev->dev, "%d-%llx", master->bus.id,
 			     desc->info.pid);
 
+		dev_info(&master->dev, "Creating new device %d-%llx with dynamic address %d\n", master->bus.id, desc->info.pid, desc->info.dyn_addr);
+
 		if (desc->boardinfo)
 			desc->dev->dev.of_node = desc->boardinfo->of_node;
 
@@ -2233,6 +2235,8 @@ int i3c_master_add_i3c_dev_locked(struct i3c_master_controller *master,
 	if (!master)
 		return -EINVAL;
 
+	dev_info(&master->dev, "%s: New device dynamic address %d\n", __func__, addr);
+
 	newdev = i3c_master_alloc_i3c_dev(master, &info);
 	if (IS_ERR(newdev))
 		return PTR_ERR(newdev);
@@ -2249,6 +2253,7 @@ int i3c_master_add_i3c_dev_locked(struct i3c_master_controller *master,
 
 	olddev = i3c_master_search_i3c_dev_duplicate(newdev);
 	if (olddev) {
+		dev_info(&master->dev, "%s: Duplicate device dynamic address old %d new %d\n", __func__, olddev->info.dyn_addr, newdev->info.dyn_addr);
 		newdev->dev = olddev->dev;
 		if (newdev->dev)
 			newdev->dev->desc = newdev;
@@ -2308,10 +2313,12 @@ int i3c_master_add_i3c_dev_locked(struct i3c_master_controller *master,
 		 * Try to apply the expected dynamic address. If it fails, keep
 		 * the address assigned by the master.
 		 */
+		dev_info(&master->dev, "%s: Trying to change dynamic address from %d to %d\n", __func__, newdev->info.dyn_addr, expected_dyn_addr);
 		ret = i3c_master_setnewda_locked(master,
 						 newdev->info.dyn_addr,
 						 expected_dyn_addr);
 		if (!ret) {
+			dev_info(&master->dev, "%s: Succeeded to change dynamic address from %d to %d\n", __func__, newdev->info.dyn_addr, expected_dyn_addr);
 			old_dyn_addr = newdev->info.dyn_addr;
 			newdev->info.dyn_addr = expected_dyn_addr;
 			i3c_master_reattach_i3c_dev(newdev, old_dyn_addr);
