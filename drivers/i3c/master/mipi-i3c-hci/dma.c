@@ -539,6 +539,13 @@ static int hci_dma_queue_xfer(struct i3c_hci *hci,
 	return 0;
 }
 
+static bool hci_dma_ring_is_running(struct hci_rh_data *rh)
+{
+	u32 ring_status = rh_reg_read(RING_STATUS);
+
+	return (ring_status & RING_STATUS_RUNNING) && !(ring_status & RING_STATUS_ABORTED);
+}
+
 static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 				 struct hci_xfer *xfer_list, int n)
 {
@@ -546,18 +553,15 @@ static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 	struct hci_rh_data *rh = &rings->headers[xfer_list[0].ring_number];
 	unsigned int i;
 	bool did_unqueue = false;
-	u32 ring_status;
 
 	guard(mutex)(&hci->control_mutex);
 
-	ring_status = rh_reg_read(RING_STATUS);
-	if (ring_status & RING_STATUS_RUNNING) {
+	if (hci_dma_ring_is_running(rh)) {
 		/* stop the ring */
 		reinit_completion(&rh->op_done);
 		rh_reg_write(RING_CONTROL, RING_CTRL_ENABLE | RING_CTRL_ABORT);
 		wait_for_completion_timeout(&rh->op_done, HZ);
-		ring_status = rh_reg_read(RING_STATUS);
-		if (ring_status & RING_STATUS_RUNNING) {
+		if (hci_dma_ring_is_running(rh)) {
 			/*
 			 * We're deep in it if ever this condition is ever met.
 			 * Hardware might still be writing to memory, etc.
