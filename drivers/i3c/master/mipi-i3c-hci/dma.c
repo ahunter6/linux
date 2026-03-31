@@ -612,6 +612,27 @@ static void hci_dma_recovery(struct i3c_hci *hci)
 	dev_err(&hci->master.dev, "Recovery %s\n", ret ? "failed!" : "done");
 }
 
+static bool hci_dma_wait_for_noop(struct i3c_hci *hci, struct hci_xfer *xfer_list, int n,
+				  int noop_pos)
+{
+	struct completion *done = xfer_list->completing_xfer->completion;
+	bool timeout = !wait_for_completion_timeout(done, HZ);
+	u32 error = timeout;
+
+	for (int i = noop_pos; i < n && !error; i++)
+		error = RESP_STATUS(xfer_list[i].response);
+
+	if (!error)
+		return true;
+
+	if (timeout)
+		dev_err(&hci->master.dev, "NoOp timeout error\n");
+	else
+		dev_err(&hci->master.dev, "NoOp error %u\n", error);
+
+	return false;
+}
+
 static bool hci_dma_ring_is_running(struct hci_rh_data *rh)
 {
 	u32 ring_status = rh_reg_read(RING_STATUS);
@@ -624,6 +645,7 @@ static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 {
 	struct hci_rings_data *rings = hci->io_data;
 	struct hci_rh_data *rh = &rings->headers[xfer_list[0].ring_number];
+	int noop_pos = -1;
 	unsigned int i;
 	bool did_unqueue = false;
 
@@ -631,6 +653,7 @@ static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 
 	spin_lock_irq(&hci->lock);
 
+restart:
 	if (hci_dma_ring_is_running(rh)) {
 		/*
 		 * The transfer may have already completed, especially
@@ -681,11 +704,8 @@ static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 				*ring_data++ = 0;
 			}
 
-			/* disassociate this xfer struct */
-			rh->src_xfers[idx] = NULL;
-
-			/* and unmap it */
-			hci_dma_unmap_xfer(hci, xfer, 1);
+			if (noop_pos < 0)
+				noop_pos = i;
 
 			did_unqueue = true;
 		}
@@ -699,6 +719,12 @@ static bool hci_dma_dequeue_xfer(struct i3c_hci *hci,
 	hci_dma_unblock_enqueue(hci);
 
 	spin_unlock_irq(&hci->lock);
+
+	if (did_unqueue && !hci_dma_wait_for_noop(hci, xfer_list, n, noop_pos)) {
+		spin_lock_irq(&hci->lock);
+		hci->recovery_needed = true;
+		goto restart;
+	}
 
 	return did_unqueue;
 }
