@@ -6399,6 +6399,7 @@ static void intel_pmu_cpu_starting(int cpu)
 	int i;
 
 	/* Set up Intel PT per-CPU state together with the core PMU */
+	pr_info("%s: cpu %d smp cpu %d raw smp cpu %d\n", __func__, cpu, smp_processor_id(), raw_smp_processor_id());
 	intel_pt_reset_cpu_state(cpu);
 
 	if (is_hybrid() && !init_hybrid_pmu(cpu))
@@ -6491,6 +6492,7 @@ static void intel_pmu_cpu_starting(int cpu)
 void perf_restore_processor_state(void)
 {
 	perf_restore_debug_store();
+	pr_info("%s: smp cpu %d raw smp cpu %d\n", __func__, smp_processor_id(), raw_smp_processor_id());
 	intel_pt_reset_cpu_state(smp_processor_id());
 }
 

@@ -1872,6 +1872,8 @@ void intel_pt_reset_cpu_state(int cpu)
 	if (!boot_cpu_has(X86_FEATURE_INTEL_PT))
 		return;
 
+	pr_info("%s: cpu %d smp cpu %d raw smp cpu %d\n", __func__, cpu, smp_processor_id(), raw_smp_processor_id());
+
 	pt->output_base = PT_MSR_INVALID;
 	pt->output_mask = PT_MSR_INVALID;
 	for (i = 0; i < PT_FILTERS_NUM; i++) {
@@ -1893,6 +1895,8 @@ int is_intel_pt_event(struct perf_event *event)
 static __init int pt_init(void)
 {
 	int ret, cpu, prior_warn = 0;
+
+	pr_info("%s: smp cpu %d raw smp cpu %d\n", __func__, smp_processor_id(), raw_smp_processor_id());
 
 	BUILD_BUG_ON(sizeof(struct topa) > PAGE_SIZE);
 
